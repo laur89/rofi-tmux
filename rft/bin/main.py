@@ -4,7 +4,15 @@
 import click
 import rft.rft as rft
 import rft.version as version
+import rft.server as server
 
+# TODO try also this (From https://stackoverflow.com/questions/45938091/multiple-context-objects-in-cli-click)
+# class Config(object):
+
+    # def __init__(self, config):
+        # # do something with config here ...
+        # self.a = 'example_A'
+        # self.b = 'example_B'
 
 @click.group()
 @click.pass_context
@@ -13,9 +21,25 @@ import rft.version as version
     default=False,
     is_flag=True,
     help='Enables logging at debug level.')
-def main(ctx, debug):
+@click.option(
+    '--daemon',
+    default=False,
+    is_flag=True,
+    help='Start our listening server.')
+def main(ctx, debug, daemon):
     """RFT (rofi-tmux) switcher."""
-    ctx.obj = rft.RFT(debug=debug)
+    if daemon:
+        ctx.obj = server.Listener(debug=debug)
+    else:
+        ctx.obj = rft.RFT(debug=debug)
+    ctx.obj._is_daemon = daemon
+
+    # if ctx.obj is None:
+        # ctx.obj = dict()
+    # ctx.obj = rft.RFT(debug=debug)
+    # ctx.obj['client'] = rft.RFT(debug=debug)
+    # ctx.obj['server'] = server.Listener(debug=debug)
+    # ctx.obj['server'].run()
 
 
 @main.command()
@@ -92,10 +116,11 @@ def lp(ctx):
 
 @main.command()
 @click.pass_obj
-def daemon(ctx):
+def start(ctx):
     """Start our daemon."""
-    ctx.start_listener()
-
+    if not ctx._is_daemon:
+        raise RuntimeError('start command only available with --daemon flag')
+    ctx.run()
 
 @main.command()
 def v():
@@ -104,4 +129,5 @@ def v():
 
 
 if __name__ == "__main__":
+    print(' !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1!')
     main()
