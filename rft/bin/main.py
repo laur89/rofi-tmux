@@ -91,6 +91,13 @@ def lp(ctx):
 
 
 @main.command()
+@click.pass_obj
+def daemon(ctx):
+    """Start our daemon."""
+    ctx.start_listener()
+
+
+@main.command()
 def v():
     """Print version."""
     print(version.__version__)

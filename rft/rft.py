@@ -8,8 +8,53 @@ import json
 import os
 import rofi
 import subprocess
+import socket
+import selectors
 logging.basicConfig(level=logging.INFO)
 
+class Listener(RFT):
+    def __init__(self):
+        print('kek: {}'.format(type(self._load_config)))
+        self.i3 = i3ipc.Connection()
+        self.i3.on('shutdown', on_shutdown)
+        self.listening_socket = socket.socket(socket.AF_UNIX,
+                                              socket.SOCK_STREAM)
+        if os.path.exists(SOCKET_FILE):
+            os.remove(SOCKET_FILE)
+        self.listening_socket.bind(SOCKET_FILE)
+        self.listening_socket.listen(1)
+
+    def launch_i3(self):
+        self.i3.main()
+
+    def launch_server(self):
+        selector = selectors.DefaultSelector()
+
+        def accept(sock):
+            conn, addr = sock.accept()
+            selector.register(conn, selectors.EVENT_READ, read)
+
+        def read(conn):
+            data = conn.recv(16)
+            if not data:
+                selector.unregister(conn)
+                conn.close()
+            elif len(data) > 0:
+                shell = data.decode().strip()
+                toggle_quickterm(shell, self.i3)
+
+        selector.register(self.listening_socket, selectors.EVENT_READ, accept)
+
+        while True:
+            for key, event in selector.select():
+                callback = key.data
+                callback(key.fileobj)
+
+    def run(self):
+        t_i3 = Thread(target=self.launch_i3)
+        t_server = Thread(target=self.launch_server)
+        for t in (t_i3, t_server):
+            t.start()
 
 class RFT(object):
     """Abstraction to interface with rofi, tmux, tmuxinator."""
@@ -323,6 +368,11 @@ class RFT(object):
             rofi_msg='Kill window',
             session_name=session_name,
             global_scope=global_scope)
+
+    def start_listener(self) -> None:
+        """Start our server listening for events over socket."""
+        listener = Listener()
+        # listener.run()
 
 def _read_dict_from_file(file_loc):
     try:
