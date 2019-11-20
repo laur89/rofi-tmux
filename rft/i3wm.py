@@ -4,6 +4,7 @@
 from .window_manager import WindowManager
 import i3ipc
 import logging
+import os
 from re import escape
 from subprocess import check_output
 from collections import defaultdict
@@ -25,6 +26,11 @@ class i3WM(WindowManager):
             self.logger.setLevel(logger_lvl)
 
         super(i3WM, self).__init__()
+
+    def start_server(self) -> None:
+        """Start i3 server"""
+        self._i3.on('shutdown', on_shutdown)
+        self._i3.main()
 
     def focus_tmux_window(self, session) -> None:
         """Focuses window where given tmux session is running in
@@ -112,4 +118,8 @@ class i3WM(WindowManager):
 
         self.logger.debug('found no windows using regex [{}]'.format(rgx))
         return None
+
+def on_shutdown(i3_conn, e):
+    os._exit(0)
+
 

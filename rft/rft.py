@@ -1,20 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# TODO: tmux cmds:
+#   time tmux list-windows  -a -F '#{session_name} #{window_name} #{window_active}'
+#   tmux list-sessions -F '"#{session_name}":{"attached": #{session_attached}, "window": "#{window_index}"}'
 
-from .i3wm import i3WM
 import libtmux
 import logging
 import json
 import os
 import rofi
 import subprocess
+from argparse import ArgumentParser
 logging.basicConfig(level=logging.INFO)
 
 
-class RFT(object):
-    """Abstraction to interface with rofi, tmux, tmuxinator."""
-
-    def __init__(self, debug=False):
+class BaseServer(object):
+    def __init__(self, debug = None):
         """Initialize ."""
         self._rofi = rofi.Rofi()
         self._libts = libtmux.Server()
@@ -30,9 +31,18 @@ class RFT(object):
         self._config = self._load_config(os.path.join(homedir, '.rft'))
         self._register_cur_sessions()
         if self._config.get('wm') == 'i3':
+            from .i3wm import i3WM
             self._wm = i3WM(self._config, logger_lvl = self.logger.getEffectiveLevel())
         else:
             self._wm = None
+
+    def run(self):
+        threads = []
+        if self._wm:
+            threads.append(Thread(target=self._wm.start_server))
+        threads.append(self._get_server_thread())
+        for t in threads:
+            t.start()
 
     def _load_config(self, conf_file_loc) -> None:
         """Load json config file ~/.rft.
@@ -331,3 +341,96 @@ def _read_dict_from_file(file_loc):
     except Exception as e:
         return {}
 
+
+class Listener_sock(BaseServer):
+    def __init__(self, debug = None):
+        import socket
+        import selectors
+        SOCKET_FILE = '/tmp/.i3-quickterm.sock'
+
+        self.listening_socket = socket.socket(socket.AF_UNIX,
+                                              socket.SOCK_STREAM)
+        if os.path.exists(SOCKET_FILE):
+            os.remove(SOCKET_FILE)
+        self.listening_socket.bind(SOCKET_FILE)
+        self.listening_socket.listen(1)
+        super().__init__(debug)
+
+    def launch_server(self):
+        selector = selectors.DefaultSelector()
+
+        def accept(sock):
+            conn, addr = sock.accept()
+            selector.register(conn, selectors.EVENT_READ, read)
+
+        def read(conn):
+            data = conn.recv(16)
+            if not data:
+                selector.unregister(conn)
+                conn.close()
+            elif len(data) > 0:
+                shell = data.decode().strip()
+                toggle_quickterm(shell, self.i3)
+
+        selector.register(self.listening_socket, selectors.EVENT_READ, accept)
+
+        while True:
+            for key, event in selector.select():
+                callback = key.data
+                callback(key.fileobj)
+
+    def _get_server_thread(self):
+        return Thread(target=self.launch_server)
+
+
+class Listener_rpc(BaseServer):
+    def __init__(self, debug = None):
+        from xmlrpc.server import SimpleXMLRPCServer
+
+        self._server = SimpleXMLRPCServer(('localhost', 8000), logRequests=True, allow_none=True)
+        self._server.register_instance(self, allow_dotted_names=True)
+        super().__init__(debug)
+
+    def _get_server_thread(self):
+        return Thread(target=self._server.serve_forever)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(prog='rofi-tmux',
+                                     description="""
+        Provides tmux context switcher with rofi front-end.
+
+        --daemon option launches the daemon process;
+        to select daemon backend, set --rpc or --socket
+        """)
+    parser.add_argument('-d', '--daemon',
+                        dest='daemon',
+                        help='start the daemon',
+                        action='store_true')
+    parser.add_argument('-S', '--socket',
+                        dest='socket',
+                        action='store_true')
+    parser.add_argument('-R', '--rpc',
+                        dest='rpc',
+                        action='store_true')
+    parser.add_argument('-D', '--debug',
+                        dest='debug',
+                        action='store_true')
+    parser.add_argument('shell', metavar='SHELL', nargs='?')
+    args = parser.parse_args()
+
+    if args.daemon:
+        load_conf()
+
+        if args.socket:
+            load_conf()
+            listener = Listener_sock(args.debug)
+        elif args.rpc:
+            load_conf()
+            listener = Listener_rpc(args.debug)
+        else:
+            raise RuntimeError('need to choose either rpc or socket server')
+
+        listener.run()
+    else:  # toggle action
+        send_msg(args.shell)
