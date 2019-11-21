@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .window_manager import WindowManager
+from window_manager import WindowManager
 import i3ipc
 import logging
 from re import escape
@@ -18,7 +18,8 @@ class i3WM(WindowManager):
 
         """
         self._i3 = i3ipc.Connection()
-        self._cur_ws_id = self._get_cur_workspace()
+        self._tree = self._i3.get_tree()
+        self._cur_ws_id = self._tree.find_focused().workspace().id
         self._conf = conf
         self.logger = logging.getLogger(__name__)
         if logger_lvl:
@@ -37,7 +38,7 @@ class i3WM(WindowManager):
 
         tmux_win = self._find_tmux_window(session)
         if tmux_win:
-            self.logger.debug('i3 focusing window running tmux session [{}]'.format(session.name))
+            self.logger.debug('i3 focusing window running tmux session [{}]'.format(session['name']))
             tmux_win.command('focus')
 
     def is_tmux_win_visible(self, session) -> bool:
@@ -79,11 +80,6 @@ class i3WM(WindowManager):
         workspace = i3_win.workspace()
         return workspace and workspace.id == self._cur_ws_id
 
-    def _get_cur_workspace(self) -> int:
-        """Finds & returns the id of current (ie focused) workspace.
-
-        """
-        return self._i3.get_tree().find_focused().workspace().id
 
     def _find_tmux_window(self, session) -> i3ipc.Con:
         """Finds and returns i3 Container instance housing tmux window that's
@@ -92,14 +88,14 @@ class i3WM(WindowManager):
         :session: tmux session whose window to find.
 
         """
-        session_name = escape(session.name)
-        window_name = escape(session.attached_window.name)
+        session_name = escape(session['name'])
+        window_name = escape(session['win']['name'])
         rgx = self._conf['tmux_title_rgx'].format_map(defaultdict(str,
                 session = session_name,
                 window = window_name
         ))
 
-        tmux_win = self._i3.get_tree().find_named(rgx)
+        tmux_win = self._tree.find_named(rgx)
         # just in case filter by container type - we want regular & floating window containers:
         tmux_win = list(filter(lambda c: c.type.endswith('con'), tmux_win))
 
