@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import click
-import rft.rft as rft
-import rft.version as version
+from rft import RFT
+import version as version
 
 
 @click.group()
@@ -15,7 +15,7 @@ import rft.version as version
     help='Enables logging at debug level.')
 def main(ctx, debug):
     """RFT (rofi-tmux) switcher."""
-    ctx.obj = rft.RFT(debug=debug)
+    ctx.obj = RFT(debug=debug)
 
 
 @main.command()
