@@ -14,7 +14,6 @@ class tmux(object):
     """tmux client"""
 
     def __init__(self, conf, logger_lvl = None) -> None:
-
         """Constructor
 
         """
@@ -32,6 +31,7 @@ class tmux(object):
     def _register_sessions(self) -> None:
         first = True
         try:
+            # TODO: instead of json.loads, consider how libtmux does it: https://github.com/tmux-python/libtmux/blob/v0.8.2/libtmux/server.py#L160
             for line in check_output(['tmux', 'list-windows', '-a', '-F', WINDOWS_FORMAT]).decode().splitlines():
                 # line = re.sub(r'("[\s\w]*)"([\s\w]*")',r"\1\'\2", line)  # escape illegal double-quotes
                 session = json.loads(line)
@@ -52,6 +52,7 @@ class tmux(object):
                         self._current_session = session
 
             # register active window:
+            # TODO: should we do this for all sessions, not only current one?
             for w in self._current_session['wins']:
                 if w['active'] == 1:
                     self._current_session['win'] = w
@@ -89,8 +90,10 @@ class tmux(object):
                 return s
         return None
 
+    # ie switch session:
     def switch_client(self, session_name) -> None:
         cmd = ['tmux', 'switch-client', '-t', session_name]
+	# any point in having following if-block?
         if self._current_session:  # TODO: do we want to target current_session? perhaps seek the client where session_name is attached to?
             client = self._get_client(self._current_session['name'])
             cmd += ['-c', client]
