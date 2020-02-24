@@ -135,7 +135,7 @@ class RFT(object):
         """
         projects = self._get_tmuxinator_projects()
         if projects:
-            res, key = self._rofi.select(rofi_msg, projects)
+            res, key = self._rofi.select(rofi_msg, projects, rofi_args=['-i'])
             if key == 0:
                 out, err = subprocess.Popen(
                     "tmuxinator {}".format(projects[res]),
@@ -189,7 +189,7 @@ class RFT(object):
                     sel = 0
             except ValueError as e:
                 sel = 0
-            res, key = self._rofi.select(rofi_msg, sessions_list, select=sel)
+            res, key = self._rofi.select(rofi_msg, sessions_list, select=sel, rofi_args=['-i'])
             if key == 0:
                 session = self._sessions[res]
                 if action == 'switch':
@@ -260,7 +260,7 @@ class RFT(object):
             except ValueError as e:
                 sel = 0
 
-            res, key = self._rofi.select(rofi_msg, windows_str, select=sel)
+            res, key = self._rofi.select(rofi_msg, windows_str, select=sel, rofi_args=['-i'])
             if key == 0:
                 win = windows[res]
                 if action == 'switch':
