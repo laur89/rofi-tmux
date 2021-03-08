@@ -93,7 +93,7 @@ class tmux(object):
     # ie switch session:
     def switch_client(self, session_name) -> None:
         cmd = ['tmux', 'switch-client', '-t', session_name]
-	# any point in having following if-block?
+        # any point in having following if-block?
         if self._current_session:  # TODO: do we want to target current_session? perhaps seek the client where session_name is attached to?
             client = self._get_client(self._current_session['name'])
             cmd += ['-c', client]
@@ -104,7 +104,7 @@ class tmux(object):
         call(cmd)
 
     def kill_window(self, win_name) -> None:
-        cmd = ['tmux', 'kill-window', '-t', win_name]
+        cmd = ['tmux', 'kill-window', '-t', win_name]  # TODO: win should be targeted more specifically than by name alone; eg session:win_id would be better; likely applies to many other commands here
         call(cmd)
 
     def attach_session(self, session_name) -> None:
