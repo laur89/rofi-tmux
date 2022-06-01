@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# to listen to server activity, then:   $ tmux -CC attach
 
 # from .window_manager import WindowManager
 import logging
