@@ -1,0 +1,11 @@
+name: Build, test, release
+
+# note "create" event is just so our flows trigger on tag pushes that
+# are tagged with [ci skip], see https://github.com/orgs/community/discussions/179637
+on: [push, create]
+
+jobs:
+  call-build:
+    uses: haridusministeerium/workflows/.github/workflows/py-build-publish-app.yml@master
+    secrets: inherit
+

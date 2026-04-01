@@ -142,8 +142,7 @@ class Tmux(object):
             client['active_session_id'] = session_id
 
             if self.client and self.client['name'] == client_id:
-                session = self.get_session(session_id)
-                if session:  # TODO: likely null e.g. when launching new session, meaning state lags when new session is created
+                if (session := self.get_session(session_id)):  # TODO: likely null e.g. when launching new session, meaning state lags when new session is created
                     self._handle_last_win(session['active_window_id'])
                     self._handle_last_sess(session['id'])
         else:
@@ -166,8 +165,8 @@ class Tmux(object):
         line_split = line.split()
         session_id = line_split[0]
         window_id = line_split[1]
-        session = self.get_session(session_id)
-        session['active_window_id'] = window_id
+        if (session := self.get_session(session_id)):
+            session['active_window_id'] = window_id
 
         self._handle_last_win(window_id)
         # note this window query is to make sure we have latest index info:
@@ -182,9 +181,8 @@ class Tmux(object):
         %unlinked-window-renamed @6 i3-new
         """
         line_split = line.split(' ', 1)
-
-        window = self.get_window(line_split[0])
-        window['name'] = line_split[1]
+        if (window := self.get_window(line_split[0])):
+            window['name'] = line_split[1]
 
     async def process_add_window(self, line):
         """
@@ -215,8 +213,8 @@ class Tmux(object):
         %session-renamed $0 main-new
         """
         line_split = line.split(' ', 1)
-        session = self.get_session(line_split[0])
-        session['name'] = line_split[1]
+        if (session := self.get_session(line_split[0])):
+            session['name'] = line_split[1]
 
 
     # this seems to be invoked both with session creation & killing
@@ -271,8 +269,7 @@ class Tmux(object):
 
 
     def _init_last_window_session(self):
-        session = self.get_current_session()
-        if session:
+        if (session := self.get_current_session()):
             self._handle_last_sess(session['id'])
             self._handle_last_win(session['active_window_id'])
 
@@ -404,7 +401,7 @@ class Tmux(object):
 
     # current session as in attached to _a_ client.
     # # TODO: what if current session is blacklisted/ignored? does it even matter here?
-    def get_current_session(self) -> dict:
+    def get_current_session(self) -> dict|None:
         return None if self.client is None else self.get_session(self.client['active_session_id'])
 
         # for client in self._clients.values():

@@ -101,8 +101,7 @@ class RFT(object):
                 stderr=subprocess.PIPE).communicate()
             # update sessions.
             self._sessions = self._get_sessions_filtered()
-            session = self._get_session_by_name(projects[res])
-            if not session:
+            if not (session := self._get_session_by_name(projects[res])):
                 return
             if self._wm:
                 self._wm.focus_tmux_window(self._cur_tmux_s)
@@ -127,8 +126,7 @@ class RFT(object):
         :rofi_msg: rofi displayed message
 
         """
-        sessions = self._tmux.get_sessions()
-        if not sessions:
+        if not (sessions := self._tmux.get_sessions()):
             self._rofi.error("There are no sessions yet")
             return
 
@@ -199,8 +197,7 @@ class RFT(object):
             is_tmux_win_visible = await self._wm.is_tmux_win_visible(cur_session)
             self.logger.debug('is_tmux_win_visible: {}'.format(is_tmux_win_visible))
 
-        last_w = self._tmux.get_last_window()
-        if last_w:
+        if (last_w := self._tmux.get_last_window()):
             last_w = self._pprint_selection_w(last_w)
 
         if is_tmux_win_visible and last_w in windows_str:
