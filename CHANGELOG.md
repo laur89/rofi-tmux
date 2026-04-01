@@ -1,4 +1,4 @@
-## 0.0.3 (unreleased)
+0.0.3 (2026-04-01)
 
 
 - change config file location to `$XDG_CONFIG_HOME/rofi-tmux/config.json`
